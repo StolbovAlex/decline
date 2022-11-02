@@ -1,0 +1,2 @@
+#!/bin/bash
+/usr/bin/php /var/www/data/parser.php >> /var/log/httpd/decline.log
