@@ -4,11 +4,11 @@
  * Обрабатывает часовые изменения и переходы хода у замков.
  * Запускаяется каждый час в 0 минут 0 секунд
  */
-    include '/opt/docker/npm/www/data/rules.php';
+    include 'rules.php';
 
 	mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 //	$link = mysqli_connect('mysql', 'decline', 'dfdbkjy5', 'decline');
-	$link = mysqli_connect('172.19.0.3', 'decline', 'dfdbkjy5', 'decline');
+	$link = mysqli_connect('172.20.0.4', 'decline', 'dfdbkjy5', 'decline');
 	if (mysqli_connect_errno()) {
 		die('Failed to connect to MySQL: '.mysqli_connect_error());
 	}
@@ -26,47 +26,54 @@
 		die('Ошибка запроса: '.mysqli_error());
 	}
 
-    $hour = date("H");
-    for($i=0; $i < mysqli_num_rows($result); $i++) {	// парсим по замкам
+   $hour = date("H");
+   for($i=0; $i < mysqli_num_rows($result); $i++) {	// парсим по замкам
 		$row = mysqli_fetch_assoc($result);	   
 		//сначала по юнитам чтобы знать цену аренды 	
 		$query1 = "SELECT * FROM `units` WHERE `castle_id`='{$row['id']}'";
 		echo time(),"-",$query1,"\n";
-	    $result1 = mysqli_query($link, $query1);
+	   $result1 = mysqli_query($link, $query1);
     	if (!$result1) {
 			die('Ошибка запроса: '.mysqli_error());
 		}
-
 		$rent = 0;
-        $allunits = mysqli_num_rows($result1);
+      $allunits = mysqli_num_rows($result1);
 		for($j=0; $j < $allunits; $j++) {				// парсим по юнитам
 	    	$row1 = mysqli_fetch_assoc($result1);
 	    	$rent = $rent + $row1['rent'];
-            if(($row['hour_turn'] == $hour) && (intval((time() - strtotime($row['hour_change']))/3600) < 24)) {	// если настал час перехода хода и не было смена хода за последние 24 часа
-//    	    if(1) {				// для теста при каждом запуске
-		// здоровье обновляется каждый час
-	        	if(($row['x'] == $row1['x']) && ($row['x'] == $row1['x']))
-		    		$row1['health'] = $row1['health'] + 25;		// если юнит в замке то восстанавливается 25% здоровья 
-    	    	else 
-	    		    $row1['health'] = $row1['health'] + 10;		// если юнит в замке то восстанавливается 10% здоровья
-				if($row1['health'] > 100)
-		    		$row1['health'] = 100;				// 100% максимум
-    	    	    // ходы обновляются на переходе хода
-    	    	$level = get_level($row1['experience']);		// шаги, атака и защита восполняются с учетом опыта
-				$row1['turns'] = $army[$row1['type']]['turns'] + $level;	// восстанавливаются полностью
-				$row1['attack'] = ($row1['health'] * ($army[$row1['type']]['attack'] + $level)/100);       // пересчитываем атаку и защиту с учетом нового здоровья 
-            	$row1['defense'] = ($row1['health'] * ($army[$row1['type']]['defense'] + $level)/100);
-                
+         if(($row['hour_turn'] == $hour) && (intval((time() - strtotime($row['hour_change']))/3600) < 24)) {	// если настал час перехода хода и не было смена хода за последние 24 часа
+//    		if(1) {				// для теста при каждом запуске здоровье обновляется каждый час
+            if(($row1['experience'] >= 1500) && ($row1['type'] != 8) && ($row1['type'] != 30)) { // если экспа 1500 все юниты кроме мага и ангела становятся ангелами.
+         	   $query2 = "UPDATE `units` SET `type`='30', `experience`='0', `cost`='0', `rent`='0', `health`='100', `turns`='10', `attack`='10', `defense`='10' WHERE `id`='{$row1['id']}'";
+					echo time(),"-",$query2,"\n";   
+	    			$result2 = mysqli_query($link, $query2);
+    				if (!$result2) {
+						die('Ошибка запроса: '.mysqli_error());
+					}
+            }
+            else {	// пересчет параметров в обучном режиме
+	        		if(($row['x'] == $row1['x']) && ($row['x'] == $row1['x']))
+		    			$row1['health'] = $row1['health'] + 25;		// если юнит в замке то восстанавливается 25% здоровья 
+    	    		else 
+	    				$row1['health'] = $row1['health'] + 10;		// если юнит не в замке то восстанавливается 10% здоровья
+					if($row1['health'] > 100)
+		    			$row1['health'] = 100;				// 100% максимум
+    	    		// ходы обновляются на переходе хода
+    	    		$level = get_level($row1['experience']);		// шаги, атака и защита восполняются с учетом опыта
+					$row1['turns'] = $army[$row1['type']]['turns'] + $level;	// восстанавливаются полностью
+					$row1['attack'] = ($row1['health'] * ($army[$row1['type']]['attack'] + $level)/100);       // пересчитываем атаку и защиту с учетом нового здоровья 
+           		$row1['defense'] = ($row1['health'] * ($army[$row1['type']]['defense'] + $level)/100);
             	$query2 = "UPDATE `units` SET `health`='{$row1['health']}', `turns`='{$row1['turns']}', `attack`='{$row1['attack']}', `defense`='{$row1['defense']}' WHERE `id`='{$row1['id']}'";
-				echo time(),"-",$query2,"\n";   
-	    		$result2 = mysqli_query($link, $query2);
-    			if (!$result2) {
-					die('Ошибка запроса: '.mysqli_error());
+					echo time(),"-",$query2,"\n";   
+	    			$result2 = mysqli_query($link, $query2);
+    				if (!$result2) {
+						die('Ошибка запроса: '.mysqli_error());
+					}
 				}
 	    	}                                                                                                                      
 		}
-//		if(($hour % 3) == 0) {	// 0,3,6,9,12,15,18,21 - часы начисления дохода и снятия оброка и прироста населения.
-		if(($hour % 1) == 0) {	// каждый запуск скрипта начисления дохода и снятия оброка и прироста населения.
+		if(($hour % 3) == 0) {	// 0,3,6,9,12,15,18,21 - часы начисления дохода и снятия оброка и прироста населения.
+//		if(($hour % 1) == 0) {	// каждый запуск скрипта начисления дохода и снятия оброка и прироста населения.
    			$query1 = "SELECT * FROM `castles` WHERE `protector_id`={$row['id']}";     // все замки которые платят налог
 	   		$result1 = mysqli_query($link, $query1);
 			if (!$result1) {

@@ -270,10 +270,12 @@ function attack_unit($link, $unitA, $unitD)
 		$result = mysqli_query($link, $query);
 		if (!$result) {
 			die('Ошибка запроса: '.mysqli_error());
-		}	
+		}
 	}
-	else {//погиб защитник
+	else { //погиб защитник
 		$unitA['turns'] = $unitA['turns'] - 1;
+		$unitA['x'] = $unitD['x'];	// атакующий юнит встает на место убитого целевого 
+		$unitA['y'] = $unitD['y'];
 		$level = get_level($unitA['experience']);							// считаем предыдущий уровень
 		$unitA['health'] = (abs($tmp) / (($army[$unitA['type']]['attack']) + $level)) * 100;		// здоровье это процент текущей защиты от максимальной с учетом опыта
 		$unitA['experience'] = $unitA['experience'] + $unitD['cost'] + $unitD['experience']/10;		// начисляем экспу
@@ -281,7 +283,7 @@ function attack_unit($link, $unitA, $unitD)
 		$unitA['attack'] = ($unitA['health'] * ($army[$unitA['type']]['attack'] + $level)/100);		// пересчитываем атаку и защиту с учетом старого здоровья и новой экспы
 		$unitA['defense'] = ($unitA['health'] * ($army[$unitA['type']]['defense'] + $level)/100);	
 
-		$query = "UPDATE `units` SET `health`='{$unitA['health']}', `experience`='{$unitA['experience']}', `turns`='{$unitA['turns']}', `attack`='{$unitA['attack']}', `defense`='{$unitA['defense']}' WHERE `id`='{$unitA['id']}'";
+		$query = "UPDATE `units` SET `x`='{$unitA['x']}', `y`='{$unitA['y']}', `health`='{$unitA['health']}', `experience`='{$unitA['experience']}', `turns`='{$unitA['turns']}', `attack`='{$unitA['attack']}', `defense`='{$unitA['defense']}' WHERE `id`='{$unitA['id']}'";
 		$result = mysqli_query($link, $query);
 		if (!$result) {
 			die('Ошибка запроса: '.mysqli_error());
